@@ -23,6 +23,7 @@ class FundingsPage extends Component {
         let accounts = await web3.eth.getAccounts();
         let fundingsAddr = await fundingFactory.methods.getFundings().call();
 
+        console.log(fundingsAddr.length);
         this.setState({fundingsAddr, account: accounts[0]});
         await this.onChangePage(1);
 
@@ -46,7 +47,7 @@ class FundingsPage extends Component {
         }
 
         let fundings = [];
-        for (startPosition; startPosition < range; startPosition++) {
+        for (startPosition; startPosition <= range; startPosition++) {
             // for (let startPosition = 0; startPosition < 1; startPosition++) {
             let fundingAddr = fundingsAddr[startPosition];
             let fundingContract = new web3.eth.Contract(FundingAbi, fundingAddr);
@@ -84,7 +85,7 @@ class FundingsPage extends Component {
             return <FundingCard funding={funding} key={funding.fundingAddr}/>
         });
         let pagination = !this.state.spinLoading &&
-            <Pagination defaultCurrent={currentPage} total={totalPage} onChange={this.onChangePage}/>;
+            <Pagination defaultCurrent={currentPage} total={this.state.fundingsAddr.length} defaultPageSize={this.state.pageSize} onChange={this.onChangePage}/>;
         return (
             <div>
                 <Spin spinning={this.state.spinLoading} size={"large"}>

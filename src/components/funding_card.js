@@ -17,14 +17,20 @@ class FundingCard extends Component {
             msg: "",
             showModal: false,
             errorMsg: "",
-            isSupporter: false
+            isSupporter: false,
+            isManager: false
         };
 
-       let timer= setInterval(() => {
+
+        let timer = setInterval(() => {
             let remainSecond = this.state.remainSecond - 1;
-            if (remainSecond<0){
-                remainSecond=0;
+            if (remainSecond < 0 || remainSecond > 5184000) {
+                remainSecond = 0;
                 clearInterval(timer);
+                this.setState({
+                    remainTime: "众筹时间结束",
+                });
+                return;
             }
             this.setState({
                 remainTime: formatSeconds(this.state.remainSecond),
@@ -35,7 +41,8 @@ class FundingCard extends Component {
 
     async componentDidMount() {
         let isSupporter = await this.state.fundingContract.methods.isSupporter(this.state.account).call();
-        this.setState({isSupporter: isSupporter});
+
+        this.setState({isSupporter: isSupporter, isManager: this.state.manager === this.state.account});
     }
 
     support = async () => {
@@ -65,7 +72,6 @@ class FundingCard extends Component {
             let response = await this.state.fundingContract.methods.refundByManager().send({
                 from: this.state.account,
             });
-            console.log(response);
         } catch (e) {
             this.setState({errorMsg: e.toString(), loading: false});
             return
@@ -75,37 +81,52 @@ class FundingCard extends Component {
             showModal: true,
             msg: "退款成功"
         });
+        this.refs.receiptModal.showModal();
+    };
+
+    showFundingInfo = () => {
 
     };
 
     render() {
-        let {manager, account, isSupporter} = this.state;
+        let {manager, isSupporter, isManager} = this.state;
         let {fundingAddr, projectName, playersCount, totalBalance, supportMoney, goalMoney} = this.props.funding;
+
         let rm = <ReceiptModal title={"本次交易信息"} receipt={this.state.receipt} ref="receiptModal"/>;
         let error = <Alert message="交易错误" description={this.state.errorMsg} type="error" closable/>;
-        let createRequest = <p><Button>发起用款请求</Button></p>;
+        let managerContent =
+            <div>
+                <p><Button>发起用款请求</Button></p>
+                <p><Button onClick={this.refund} loading={this.state.loading}>退款</Button></p>
+            </div>
+        ;
         let showSupport = isSupporter ? <Tag color="green">您是支持者!谢谢支持!</Tag> :
             <p><Button onClick={this.support} loading={this.state.loading}>点击支持</Button></p>;
 
         return (
-            <Col span={6}>
-                {/*显示小票的确认框*/}
-                {this.state.showReceiptModal && rm}
+            <Col span={7}>
+                {/*显示信息确认框*/}
+                {this.state.showModal && rm}
                 {this.state.errorMsg && error}
-                <Card title={projectName} style={{width: 325, marginTop: 20, height: 440}}>
-                    <p>
-                        该项目:
+                <Card title={projectName} style={{width: 280, marginTop: 20}}>
+                  {/*  <p>
+                        该合约地址:
                     </p>
                     <Tag color="#2db7f5">{fundingAddr}</Tag>
                     <br/>
+                    <p>
+                        合约创建人地址:
+                    </p>
+                    <Tag color="#2db7f5">{manager}</Tag>
+                    <br/>*/}
                     <p>参与人数:{playersCount}</p>
                     <p>当前获得支持:{totalBalance}Wei</p>
                     <p>剩余时间:{this.state.remainTime}</p>
                     <p>支持项目需要花费:{supportMoney}Wei</p>
                     <p>众筹所需金额:{goalMoney}Wei</p>
                     {showSupport}
-                    {manager === account && createRequest}
-                    <p><Button onClick={this.refund} loading={this.state.loading}>退款</Button></p>
+                    <p><Button onClick={this.showFundingInfo}>查看详情</Button></p>
+                    {/*{isManager && managerContent}*/}
                 </Card>
             </Col>
         );

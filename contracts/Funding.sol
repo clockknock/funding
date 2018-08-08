@@ -32,7 +32,6 @@ contract Funding{
     //众筹是否完成
     bool isComplete;
 
-
     //付款请求申请的数组(由众筹发起人申请)
     Request[] public requests;
 
@@ -50,6 +49,9 @@ contract Funding{
     }
 
     function getRemainSecond() public view returns(uint){
+        if((endTime-now)<0){
+            return 0;
+        }
         return (endTime - now);
     }
 
@@ -76,11 +78,11 @@ contract Funding{
 
     // 付款请求的结构体
     struct Request{
-        string description; // 为什么要付款
-        uint money; // 花多少钱
-        address shopAddress; //  卖家的钱包 地址
-        bool complete;  //  付款是否已经完成
-        mapping(address=>bool) votedMap; // 哪些已经投过票的人
+        string description; //为什么要付款
+        uint money; //花多少钱
+        address shopAddress; //卖家的钱包地址
+        bool complete;  //付款是否已经完成
+        mapping(address=>bool) votedMap; //哪些已经投过票的人
         uint  voteCount; // 投票的总的总数
     }
 
@@ -96,7 +98,7 @@ contract Funding{
         return requests[index].shopAddress;
     }
 
-    function getRequestCopleteAt(uint index) public view returns(bool){
+    function getRequestCompleteAt(uint index) public view returns(bool){
         return requests[index].complete;
     }
 
@@ -114,7 +116,7 @@ contract Funding{
         projectName = _projectName;
         supportMoney = _supportMoney;
         goalMoney = _goalMoney;
-        endTime = now + 4 weeks;
+        endTime = now + 30 minutes;
     }
 
     function createRequest( string _description, uint _money, address _shopAddress) public  onlyManagerCanCall{
@@ -125,7 +127,6 @@ contract Funding{
             complete:false,
             voteCount : 0
             });
-
         requests.push(request);
     }
 
@@ -153,7 +154,6 @@ contract Funding{
         request.complete = true;
     }
 
-
     //是否是支持者
     function isSupporter(address _addr) public view returns(bool){
         return playersMap[_addr];
@@ -169,24 +169,31 @@ contract Funding{
     }
 
     //退款操作
-    function refund() public{
+    function refundByAnyone() public needUnComplete{
         //如果超时了需要退款
         require(getRemainSecond()<0);
         //如果筹集的款没有到达目标金额需要退款
         require(address(this).balance<goalMoney);
-        for(uint i =0;i < players.length;i++){
-            players[0].transfer(supportMoney);
-        }
-        players = new address[](0);
+        refund();
     }
 
     //众筹未完成前可以发起者可以主动退款
-    function refundByManager() public needUnComplete{
+    function refundByManager() public needUnComplete onlyManagerCanCall{
+        refund();
+    }
+
+    function refund()private{
         for(uint i =0;i < players.length;i++){
             players[i].transfer(supportMoney);
             playersMap[players[i]]=false;
         }
         players = new address[](0);
+        endTime=now;
+        isComplete = true;
+    }
+
+    function getIsComplete() public view returns(bool){
+        return isComplete;
     }
 
     modifier onlyManagerCanCall(){

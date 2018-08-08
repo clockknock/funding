@@ -33,13 +33,13 @@ class App extends Component {
                         <div className="logo"/>
                         <Menu theme="dark" mode="inline" defaultSelectedKeys={['1']}>
                             <Menu.Item key="1">
-                                <Link to="/">
+                                <Link to="/funding">
                                     <Icon type="user"/>
-                                    <span className="nav-text">众筹首页</span>
+                                    <span className="nav-text">众筹一览</span>
                                 </Link>
                             </Menu.Item>
                             <Menu.Item key="2">
-                                <Link to="/create_funding">
+                                <Link to="/funding/create">
                                     <Icon type="video-camera"/>
                                     <span className="nav-text">开始众筹</span>
                                 </Link>
@@ -54,8 +54,8 @@ class App extends Component {
                             </div>
                         </Header>
                         <Content style={{margin: '24px 16px 0'}}>
-                            <Route path="/"  exact={true} component={FundingsPage}/>
-                            <Route path="/create_funding" component={CreateFunding}/>
+                            <Route path="/funding"  exact={true} component={FundingsPage}/>
+                            <Route path="/funding/create" component={CreateFunding}/>
                         </Content>
 
                     </Layout>
