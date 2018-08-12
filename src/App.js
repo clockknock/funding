@@ -3,6 +3,7 @@ import {BrowserRouter as Router, Route, Link} from 'react-router-dom';
 import {Layout, Menu, Icon} from 'antd';
 import FundingsPage from "./pages/fundings_page";
 import CreateFunding from "./pages/create_funding";
+import FundingDetail from "./pages/funding_detail";
 
 const {Header, Sider, Content} = Layout;
 
@@ -33,13 +34,13 @@ class App extends Component {
                         <div className="logo"/>
                         <Menu theme="dark" mode="inline" defaultSelectedKeys={['1']}>
                             <Menu.Item key="1">
-                                <Link to="/funding">
+                                <Link to="/">
                                     <Icon type="user"/>
                                     <span className="nav-text">众筹一览</span>
                                 </Link>
                             </Menu.Item>
                             <Menu.Item key="2">
-                                <Link to="/funding/create">
+                                <Link to="/create">
                                     <Icon type="video-camera"/>
                                     <span className="nav-text">开始众筹</span>
                                 </Link>
@@ -54,8 +55,9 @@ class App extends Component {
                             </div>
                         </Header>
                         <Content style={{margin: '24px 16px 0'}}>
-                            <Route path="/funding"  exact={true} component={FundingsPage}/>
-                            <Route path="/funding/create" component={CreateFunding}/>
+                            <Route path="/"  exact={true} component={FundingsPage}/>
+                            <Route path="/create" component={CreateFunding}/>
+                            <Route path={`/detail/:fundingAddr`} component={FundingDetail}/>
                         </Content>
 
                     </Layout>

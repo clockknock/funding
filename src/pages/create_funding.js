@@ -39,11 +39,9 @@ class CreateFunding extends Component {
             throw e;
         }
 
-
         message.success("创建众筹项目成功");
         this.setState({loading: false});
     };
-
 
     render() {
 

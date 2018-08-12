@@ -33,9 +33,4 @@ deploy = async (inter, byteKode,args) => {
 
 // deploy(Funding.interface, Funding.bytecode);
 deploy(FundingFactory.interface, FundingFactory.bytecode,{});
-// deploy(Funding.interface, Funding.bytecode,
-//     {
-//     "_projectName":"小电灯",
-//     "_supportMoney":"50000000000000000",
-//     "_goalMoney":"5000000000000000000"
-// });
+

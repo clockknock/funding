@@ -1,4 +1,5 @@
 pragma solidity ^0.4.24;
+import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
 
 contract FundingFactory{
 
@@ -15,7 +16,7 @@ contract FundingFactory{
     }
 }
 
-contract Funding{
+contract Funding  is usingOraclize{
     //众筹发起人地址(众筹发起人)
     address private manager;
     //项目名称
@@ -30,7 +31,10 @@ contract Funding{
     address[] private players;
     mapping(address=>bool) public playersMap;
     //众筹是否完成
-    bool isComplete;
+    bool public isComplete;
+    string public EURGBP;
+
+    uint fundingLimitTime = 15 minutes;
 
     //付款请求申请的数组(由众筹发起人申请)
     Request[] public requests;
@@ -71,7 +75,6 @@ contract Funding{
         return goalMoney;
     }
 
-
     function getRequestSize() public view returns(uint){
         return requests.length;
     }
@@ -111,12 +114,26 @@ contract Funding{
     }
 
     //  构造函数
-    constructor(string _projectName,uint _supportMoney,uint _goalMoney, address _address) public{
+    constructor(string _projectName,uint _supportMoney,uint _goalMoney, address _address) payable public{
         manager = _address;
         projectName = _projectName;
         supportMoney = _supportMoney;
         goalMoney = _goalMoney;
-        endTime = now + 30 minutes;
+        endTime =now + fundingLimitTime;
+        //在合约创建的时候发起定时任务
+        updateIsComplete();
+    }
+
+    //updateIsComplete触发的回调函数
+    function __callback(bytes32 myid, string result) public {
+        EURGBP=result;
+        isComplete=true;
+    }
+
+    //发起一个定时任务更新isComplete field
+    function updateIsComplete() public payable {
+        oraclize_query(fundingLimitTime,"URL",
+            "json(https://www.therocktrading.com/api/ticker/BTCEUR).result.0.last");
     }
 
     function createRequest( string _description, uint _money, address _shopAddress) public  onlyManagerCanCall{
@@ -169,7 +186,7 @@ contract Funding{
     }
 
     //退款操作
-    function refundByAnyone() public needUnComplete{
+    function refundByAnyone() public needIsComplete{
         //如果超时了需要退款
         require(getRemainSecond()<0);
         //如果筹集的款没有到达目标金额需要退款
@@ -192,6 +209,7 @@ contract Funding{
         isComplete = true;
     }
 
+    //获取
     function getIsComplete() public view returns(bool){
         return isComplete;
     }
@@ -204,6 +222,12 @@ contract Funding{
     //需要众筹未结束时才能调用的修饰符
     modifier needUnComplete(){
         require(!isComplete);
+        _;
+    }
+
+    //需要众筹结束后才能调用的修饰符
+    modifier needIsComplete(){
+        require(isComplete);
         _;
     }
 

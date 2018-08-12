@@ -8,6 +8,7 @@ let result=solc.compile(lotterySrc,1);
 let Funding= result.contracts[":Funding"];
 let FundingFactory= result.contracts[":FundingFactory"];
 
+console.log(result);
 module.exports={
     Funding,FundingFactory
 };
