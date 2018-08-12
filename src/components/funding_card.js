@@ -2,7 +2,7 @@ import React, {Component} from 'react';
 import {Link} from 'react-router-dom';
 import {Card, Col, Tag, Button, Alert} from 'antd';
 import formatSeconds from '../utils/timeUtil';
-import ReceiptModal from "./receipt_modal";
+// import ReceiptModal from "./receipt_modal";
 
 class FundingCard extends Component {
     constructor(props) {
@@ -63,10 +63,10 @@ class FundingCard extends Component {
         }
         this.setState({
             loading: false,
-            showModal: true,
+            // showModal: true,
             msg: JSON.stringify(receipt)
         });
-        this.refs.receiptModal.showModal();
+        // this.refs.receiptModal.showModal();
     };
 
     showSupport = (isComplete, isSupporter) => {
@@ -84,14 +84,14 @@ class FundingCard extends Component {
         let {isComplete, isSupporter} = this.state;
         let {projectName, playersCount, totalBalance, supportMoney, goalMoney} = this.props.funding;
 
-        let rm = <ReceiptModal title={"本次交易信息"} receipt={this.state.receipt} ref="receiptModal"/>;
+        // let rm = <ReceiptModal title={"本次交易信息"} receipt={this.state.receipt} ref="receiptModal"/>;
         let error = <Alert message="交易错误" description={this.state.errorMsg} type="error" closable/>;
 
         let showSupport = this.showSupport(isComplete, isSupporter);
         return (
             <Col span={7}>
                 {/*显示信息确认框*/}
-                {this.state.showModal && rm}
+                {/*{this.state.showModal && rm}*/}
                 {this.state.errorMsg && error}
                 <Card title={projectName} style={{width: 280, marginTop: 20, height: 356}}>
                     <p>参与人数:{playersCount}</p>

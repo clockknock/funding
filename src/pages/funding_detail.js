@@ -1,9 +1,11 @@
 import React, {Component} from 'react';
-import {Card, Tag, Button, Alert, Spin} from 'antd';
+import {Card, Tag, Button, Alert, Spin, Layout, Row, Col, Input} from 'antd';
 import {FundingAbi} from "../abi_backup";
 import web3 from "../web3";
 import ReceiptModal from "../components/receipt_modal";
 import formatSeconds from "../utils/timeUtil";
+
+const {TextArea} = Input;
 
 class FundingDetail extends Component {
     constructor(props) {
@@ -47,6 +49,7 @@ class FundingDetail extends Component {
         let goalMoney = await fundingContract.methods.getGoalMoney().call();
         let manager = await fundingContract.methods.getManager().call();
         let isComplete = await fundingContract.methods.getIsComplete().call();
+        let isSupporter = await fundingContract.methods.isSupporter(this.state.account).call();
 
         let account = accounts[0];
         let isManager = manager === account;
@@ -62,7 +65,8 @@ class FundingDetail extends Component {
             manager,
             account,
             isComplete,
-            isManager
+            isManager,
+            isSupporter
         };
         this.setState({funding, spinLoading: false});
     }
@@ -132,9 +136,8 @@ class FundingDetail extends Component {
                     <Button style={{marginTop: "4px"}} onClick={this.refund} loading={this.state.loading}>主动退款</Button>
                 </p>
                 <p>
-                    {isComplete ? <Button>发起用款请求</Button>:<Button></Button> }
+                    {isComplete ? <Button>发起用款请求</Button> : <span></span>}
                 </p>
-
             </div>
         ;
         let showSupport = this.showSupport(isComplete, isSupporter);
@@ -142,30 +145,52 @@ class FundingDetail extends Component {
         return (
             <Spin spinning={this.state.spinLoading} size={"large"}>
                 <div>
-                    {/*显示信息确认框*/}
-                    {this.state.showModal && rm}
-                    {this.state.errorMsg && error}
-                    <Card title={projectName} style={{width: 320, marginTop: 20}}>
-                        <p>
-                            该合约地址:
-                        </p>
-                        <Tag color="#2db7f5">{fundingAddr}</Tag>
-                        <br/>
-                        <p>
-                            合约创建人地址:
-                        </p>
-                        <Tag color="#2db7f5">{manager}</Tag>
-                        <br/>
-                        <p>参与人数:{playersCount}</p>
-                        <p>当前获得支持:{totalBalance}Wei</p>
-                        <p>剩余时间:{this.state.remainTime}</p>
-                        <p>支持项目需要花费:{supportMoney}Wei</p>
-                        <p>众筹所需金额:{goalMoney}Wei</p>
-                        <p><Button>发起退款请求(众筹未完成时可发起)</Button></p>
-                        {showSupport}
-                        {isManager && managerContent}
-                    </Card>
+                    <div style={{float: "left", width: "30%"}}>
+                        {/*显示信息确认框*/}
+                        {this.state.showModal && rm}
+                        {this.state.errorMsg && error}
+                        <Card title={projectName} style={{width: 320, marginTop: 20}}>
+                            <p>
+                                该合约地址:
+                            </p>
+                            <Tag color="#2db7f5">{fundingAddr}</Tag>
+                            <br/>
+                            <p>
+                                合约创建人地址:
+                            </p>
+                            <Tag color="#2db7f5">{manager}</Tag>
+                            <br/>
+                            <p>参与人数:{playersCount}</p>
+                            <p>当前获得支持:{totalBalance}Wei</p>
+                            <p>剩余时间:{this.state.remainTime}</p>
+                            <p>支持项目需要花费:{supportMoney}Wei</p>
+                            <p>众筹所需金额:{goalMoney}Wei</p>
+                            <p><Button>发起退款请求(众筹未完成时可发起)</Button></p>
+                            {showSupport}
+                            {isManager && managerContent}
+                        </Card>
+                    </div>
+                    <div style={{float: "left", width: "65%", marginLeft: "3%", textAlign: "center"}}>
+                        <h1>筹款人用款请求列表</h1>
+                        <Row gutter={16}>
+                            <Col span={7}>
+                                <Card title={"第一条需求"}>
+                                    <p>投票数:5</p>
+                                    <p>所需金额:4000 Wei</p>
+                                    <p>是否付款:false</p>
+                                    <p>isVotedAt(address):一个地址</p>
+                                    <p>
+                                        收款人地址:
+                                    </p>
+                                    <TextArea disabled={true}>0xB5EC8Ff846112F944E2b06cC11602fe918557e36</TextArea>
+                                    <Button>点击支持(根据isSupporter来判断是否显示)</Button>
+                                </Card>
+                            </Col>
+
+                        </Row>
+                    </div>
                 </div>
+
             </Spin>
         );
     }
