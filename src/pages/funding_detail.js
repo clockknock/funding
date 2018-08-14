@@ -7,6 +7,8 @@ import RequestCard from "../components/request_card";
 import WrappedRequestForm from "../components/request_form";
 
 
+const timer = null;
+
 class FundingDetail extends Component {
     constructor(props) {
         super(props);
@@ -16,48 +18,54 @@ class FundingDetail extends Component {
             spinLoading: true,
             remainTime: "loading",
             isComplete: false,
-            remainSecond: 3600
+            remainSecond: 3600,
+            isManager: false,
+            creatingRequest: false,
+            isLoadingRequests: true,
+            requestDetails: []
         };
-    }
+    };
+
 
     async componentDidMount() {
         let fundingAddr = this.state.fundingAddr;
         let accounts = await web3.eth.getAccounts();
         let account = accounts[0];
         let fundingContract = new web3.eth.Contract(FundingAbi, fundingAddr);
-        let projectName = await fundingContract.methods.getProjectName().call();
-        let playersCount = await fundingContract.methods.getPlayersCount().call();
-        let totalBalance = await fundingContract.methods.getTotalBalance().call();
-        let remainSecond = await fundingContract.methods.getRemainSecond().call();
-        let supportMoney = await fundingContract.methods.getSupportMoney().call();
-        let goalMoney = await fundingContract.methods.getGoalMoney().call();
-        let manager = await fundingContract.methods.getManager().call();
-        let isComplete = await fundingContract.methods.getIsComplete().call();
-        let isFundingSuccess = await fundingContract.methods.getIsFundingSuccess().call();
-        let isSupporter = await fundingContract.methods.isSupporter(account).call();
-
-
-        let isManager = manager === account;
-        let funding = {
-            fundingContract,
-            fundingAddr,
-            projectName,
-            playersCount,
-            totalBalance,
-            supportMoney,
-            goalMoney,
-            manager,
-            account,
-            isComplete,
-            isManager,
-            isSupporter,
-            isFundingSuccess
-        };
-
-        this.setState({funding, spinLoading: false, remainSecond});
+        //创建当前众筹对象
+        let funding = await this.createFunding(fundingAddr, account, fundingContract);
+        let {remainSecond, isManager, isFundingSuccess, requestSize} = funding;
+        //funding对象
+        this.setState({funding, spinLoading: false, remainSecond, isManager});
+        //众筹如果成功并且请求数量大于0,就开始获取当前是否有用款请求
+        let requestDetails = [];
+        if (isFundingSuccess && (requestSize > 0)) {
+            requestDetails = await this.createRequestDetails(requestSize, fundingContract, account);
+            //requestDetails获取完了设置进state
+            this.setState({isLoadingRequests: false, requestDetails});
+        }
 
         //众筹完成的倒计时
-        let timer = setInterval(() => {
+        this.startCountingDown(timer);
+    }
+
+    async createRequestDetails(requestSize, fundingContract, account) {
+        let requestDetails = [];
+        for (let i = 0; i < requestSize; i++) {
+            let description = await fundingContract.methods.getRequestDescriptionAt(i).call();
+            let money = await fundingContract.methods.getRequestMoneyAt(i).call();
+            let shopAddress = await fundingContract.methods.getRequestShopAddressAt(i).call();
+            let complete = await fundingContract.methods.getRequestCompleteAt(i).call();
+            let voteCount = await fundingContract.methods.getRequestVoteCountAt(i).call();
+            let isVoted = await fundingContract.methods.isVotedAt(i, account).call();
+
+            requestDetails.push({description, money, shopAddress, complete, voteCount, isVoted})
+        }
+        return requestDetails;
+    }
+
+    startCountingDown(timer) {
+        timer = setInterval(() => {
             let remainSecond = this.state.remainSecond - 1;
             console.log(remainSecond);
             if (remainSecond < 0 || remainSecond > 5184000) {
@@ -74,6 +82,40 @@ class FundingDetail extends Component {
                 remainSecond
             });
         }, 1000);
+    }
+
+    async createFunding(fundingAddr, account, fundingContract) {
+        let projectName = await fundingContract.methods.getProjectName().call();
+        let playersCount = await fundingContract.methods.getPlayersCount().call();
+        let totalBalance = await fundingContract.methods.getTotalBalance().call();
+        let remainSecond = await fundingContract.methods.getRemainSecond().call();
+        let supportMoney = await fundingContract.methods.getSupportMoney().call();
+        let goalMoney = await fundingContract.methods.getGoalMoney().call();
+        let manager = await fundingContract.methods.getManager().call();
+        let isComplete = await fundingContract.methods.getIsComplete().call();
+        let isFundingSuccess = await fundingContract.methods.getIsFundingSuccess().call();
+        let isSupporter = await fundingContract.methods.isSupporter(account).call();
+        let requestSize = await fundingContract.methods.getRequestSize().call();
+
+        let isManager = manager === account;
+        let funding = {
+            fundingContract,
+            fundingAddr,
+            projectName,
+            playersCount,
+            totalBalance,
+            supportMoney,
+            goalMoney,
+            manager,
+            account,
+            isComplete,
+            isManager,
+            isSupporter,
+            isFundingSuccess,
+            remainSecond,
+            requestSize
+        };
+        return funding;
     }
 
     support = async () => {
@@ -113,7 +155,6 @@ class FundingDetail extends Component {
             // showModal: true,
             msg: "退款成功"
         });
-        // this.refs.receiptModal.showModal();
         alert("退款成功");
     };
 
@@ -135,9 +176,21 @@ class FundingDetail extends Component {
         alert(JSON.stringify(receipt));
     };
 
+    createRequest = async (requestDesc, money, shopAddress) => {
+        this.setState({creatingRequest: true});
+        console.log(this.state.funding.fundingContract.methods);
+
+        let receipt = await this.state.funding.fundingContract.methods.createRequest(requestDesc, money, shopAddress).send({
+            from: this.state.funding.account
+        });
+
+        alert(JSON.stringify(receipt));
+        this.setState({creatingRequest: false});
+
+    };
 
     render() {
-        let {fundingAddr} = this.state;
+        let {fundingAddr, creatingRequest} = this.state;
         let {isComplete, isSupporter, isFundingSuccess} = this.state.funding;
         let {manager, isManager, projectName, playersCount, totalBalance, supportMoney, goalMoney} = this.state.funding;
 
@@ -156,6 +209,18 @@ class FundingDetail extends Component {
             </div>
         ;
         let showSupport = this.showSupport(isComplete, isSupporter);
+
+        if (this.state.spinLoading) {
+            return (
+                <Spin spinning={this.state.spinLoading} size={"large"}>
+                    <div style={{width: "100%"}}/>
+                </Spin>
+            )
+        }
+
+        let requestCards = this.state.requestDetails.map((value, i) => {
+            return <RequestCard isSupporter={isSupporter} request={value} key={i}/>;
+        });
 
         return (
             <Spin spinning={this.state.spinLoading} size={"large"}>
@@ -187,21 +252,32 @@ class FundingDetail extends Component {
                             {isManager && managerContent}
                         </Card>
 
+                        {isManager &&
                         <Card title={"发起请求"} style={{width: 330, marginTop: 20}}>
-                            <WrappedRequestForm/>
+                            {
+                                isFundingSuccess ?
+                                    < WrappedRequestForm createRequest={this.createRequest}
+                                                         creatingRequest={creatingRequest}/> :
+                                    <p>众筹尚未成功,请成功后再尝试发起用款请求</p>
+                            }
                         </Card>
+                        }
                     </div>
-                    <div style={{float: "left", width: "65%", marginLeft: "3%", textAlign: "center"}}>
-                        <h1>筹款人用款请求列表</h1>
-                        <Row gutter={16}>
-                            <RequestCard/>
-                        </Row>
-                    </div>
+                    {
+                        isFundingSuccess &&
+                        <div style={{float: "left", width: "65%", marginLeft: "3%", textAlign: "center"}}>
+                            <h1>筹款人用款请求列表</h1>
+                            <Spin spinning={this.state.isLoadingRequests}>
+                                <Row gutter={16}>
+                                    {requestCards}
+                                </Row>
+                            </Spin>
+                        </div>
+                    }
                 </div>
             </Spin>
         );
     }
 }
-
 
 export default FundingDetail;

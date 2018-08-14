@@ -15,9 +15,7 @@ class Request_form extends React.Component {
         this.props.form.validateFields((err, values) => {
             if (!err) {
                 let {requestDesc, money, shopAddress} = values;
-                console.log(requestDesc);
-                console.log(money);
-                console.log(shopAddress);
+                this.props.createRequest(requestDesc,money,shopAddress);
             }
         });
     };
@@ -56,12 +54,11 @@ class Request_form extends React.Component {
                         })(
                             <TextArea/>
                         )}
-
                     </FormItem>
                 </Row>
                 <Row>
                     <br/>
-                    <Button type="primary" htmlType="submit">发起花款请求</Button>
+                    <Button type="primary" htmlType="submit" loading={this.props.creatingRequest}>发起花款请求</Button>
                 </Row>
             </Form>
         );
