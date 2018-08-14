@@ -135,7 +135,7 @@ contract Funding is usingOraclize {
     //updateIsComplete触发的回调函数
     function __callback(bytes32 myid, string result) public {
         isComplete = true;
-        if (address(this).balance > getGoalMoney()) {
+        if (address(this).balance >= getGoalMoney()) {
             isFundingSuccess = true;
         }
     }
@@ -147,7 +147,7 @@ contract Funding is usingOraclize {
     }
 
     //创建用款请求
-    function createRequest(string _description, uint _money, address _shopAddress) public onlyManagerCanCall {
+    function createRequest(string _description, uint _money, address _shopAddress) needIsComplete public onlyManagerCanCall {
         Request memory request = Request({
             description : _description,
             money : _money,
@@ -171,6 +171,8 @@ contract Funding is usingOraclize {
 
     //众筹发起人调用, 可以调用完成付款, index:下标
     function finalizeRequest(uint index) public onlyManagerCanCall {
+        //需要众筹成功才能支持,避免捐款逃跑
+        require(isFundingSuccess);
         Request storage request = requests[index];
         // 付款必须是未完成的
         require(!request.complete);
@@ -188,9 +190,7 @@ contract Funding is usingOraclize {
     }
 
     //发起交易的人支持众筹
-    function support() public needIsComplete payable {
-        //需要众筹成功才能支持,避免捐款逃跑
-        require(isFundingSuccess);
+    function support() public needUnComplete payable {
         //没支持过才能支持
         require(!playersMap[msg.sender]);
         require(msg.value == supportMoney);
@@ -221,8 +221,8 @@ contract Funding is usingOraclize {
         players = new address[](0);
         endTime = now;
         isComplete = true;
-        //退款后摧毁当前合约
-        selfdestruct(this);
+        //退款后摧毁当前合约 摧毁后有些别的麻烦,先不摧毁了,回头想方案解决
+        //        selfdestruct(this);
     }
 
     //获取当前合约是否结束(是否到结束的时间)

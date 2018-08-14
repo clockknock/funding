@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import {Link} from 'react-router-dom';
 import {Card, Col, Tag, Button, Alert} from 'antd';
 import formatSeconds from '../utils/timeUtil';
+
 // import ReceiptModal from "./receipt_modal";
 
 class FundingCard extends Component {
@@ -36,7 +37,7 @@ class FundingCard extends Component {
                 return;
             }
             this.setState({
-                remainTime: formatSeconds(this.state.remainSecond),
+                remainTime: formatSeconds(remainSecond),
                 remainSecond
             });
         }, 1000);
@@ -99,10 +100,12 @@ class FundingCard extends Component {
                     <p>剩余时间:{this.state.remainTime}</p>
                     <p>支持项目需要花费:{supportMoney}Wei</p>
                     <p>众筹所需金额:{goalMoney}Wei</p>
+                    <p>
+                        <Link to={`/detail/${this.state.fundingAddr}`}>
+                            <Button>查看详情</Button>
+                        </Link>
+                    </p>
                     {showSupport}
-                    <Link to={`/detail/${this.state.fundingAddr}`}>
-                        <Button>查看详情</Button>
-                    </Link>
                 </Card>
             </Col>
         );

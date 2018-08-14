@@ -1,25 +1,65 @@
 import React, {Component} from 'react';
-import {Card, Tag, Button, Alert, Spin, Layout, Row, Col, Input} from 'antd';
+import {Card, Tag, Button, Alert, Spin, Row} from 'antd';
 import {FundingAbi} from "../abi_backup";
 import web3 from "../web3";
-import ReceiptModal from "../components/receipt_modal";
 import formatSeconds from "../utils/timeUtil";
+import RequestCard from "../components/request_card";
+import WrappedRequestForm from "../components/request_form";
 
-const {TextArea} = Input;
 
 class FundingDetail extends Component {
     constructor(props) {
         super(props);
         this.state = {
             fundingAddr: props.match.params.fundingAddr,
-            funding: {},
+            funding: {},//默认给一个remainSecond,避免NAN错误
             spinLoading: true,
-            remainTime: 0,
-            isComplete: false
+            remainTime: "loading",
+            isComplete: false,
+            remainSecond: 3600
+        };
+    }
+
+    async componentDidMount() {
+        let fundingAddr = this.state.fundingAddr;
+        let accounts = await web3.eth.getAccounts();
+        let account = accounts[0];
+        let fundingContract = new web3.eth.Contract(FundingAbi, fundingAddr);
+        let projectName = await fundingContract.methods.getProjectName().call();
+        let playersCount = await fundingContract.methods.getPlayersCount().call();
+        let totalBalance = await fundingContract.methods.getTotalBalance().call();
+        let remainSecond = await fundingContract.methods.getRemainSecond().call();
+        let supportMoney = await fundingContract.methods.getSupportMoney().call();
+        let goalMoney = await fundingContract.methods.getGoalMoney().call();
+        let manager = await fundingContract.methods.getManager().call();
+        let isComplete = await fundingContract.methods.getIsComplete().call();
+        let isFundingSuccess = await fundingContract.methods.getIsFundingSuccess().call();
+        let isSupporter = await fundingContract.methods.isSupporter(account).call();
+
+
+        let isManager = manager === account;
+        let funding = {
+            fundingContract,
+            fundingAddr,
+            projectName,
+            playersCount,
+            totalBalance,
+            supportMoney,
+            goalMoney,
+            manager,
+            account,
+            isComplete,
+            isManager,
+            isSupporter,
+            isFundingSuccess
         };
 
+        this.setState({funding, spinLoading: false, remainSecond});
+
+        //众筹完成的倒计时
         let timer = setInterval(() => {
-            let remainSecond = this.state.funding.remainSecond - 1;
+            let remainSecond = this.state.remainSecond - 1;
+            console.log(remainSecond);
             if (remainSecond < 0 || remainSecond > 5184000) {
                 remainSecond = 0;
                 clearInterval(timer);
@@ -30,56 +70,20 @@ class FundingDetail extends Component {
                 return;
             }
             this.setState({
-                remainTime: formatSeconds(this.state.remainSecond),
+                remainTime: formatSeconds(remainSecond),
                 remainSecond
             });
         }, 1000);
     }
 
-    async componentDidMount() {
-        let fundingAddr = this.state.fundingAddr;
-        let accounts = await web3.eth.getAccounts();
-
-        let fundingContract = new web3.eth.Contract(FundingAbi, fundingAddr);
-        let projectName = await fundingContract.methods.getProjectName().call();
-        let playersCount = await fundingContract.methods.getPlayersCount().call();
-        let totalBalance = await fundingContract.methods.getTotalBalance().call();
-        let remainSecond = await fundingContract.methods.getRemainSecond().call();
-        let supportMoney = await fundingContract.methods.getSupportMoney().call();
-        let goalMoney = await fundingContract.methods.getGoalMoney().call();
-        let manager = await fundingContract.methods.getManager().call();
-        let isComplete = await fundingContract.methods.getIsComplete().call();
-        let isSupporter = await fundingContract.methods.isSupporter(this.state.account).call();
-
-        let account = accounts[0];
-        let isManager = manager === account;
-        let funding = {
-            fundingContract,
-            fundingAddr,
-            projectName,
-            playersCount,
-            totalBalance,
-            remainSecond,
-            supportMoney,
-            goalMoney,
-            manager,
-            account,
-            isComplete,
-            isManager,
-            isSupporter
-        };
-        this.setState({funding, spinLoading: false});
-    }
-
     support = async () => {
         this.setState({loading: true});
-        let {fundingContract, account} = this.state.funding;
-        let value = this.state.supportMoney;
+        let {fundingContract, account, supportMoney} = this.state.funding;
         let receipt = "";
         try {
             receipt = await fundingContract.methods.support().send({
                 from: account,
-                value: value
+                value: supportMoney
             });
         } catch (e) {
             this.setState({errorMsg: e.toString(), loading: false});
@@ -87,17 +91,18 @@ class FundingDetail extends Component {
         }
         this.setState({
             loading: false,
-            showModal: true,
+            // showModal: true,
             msg: JSON.stringify(receipt)
         });
-        this.refs.receiptModal.showModal();
+        // this.refs.receiptModal.showModal();
+        alert("转账成功!信息为:" + JSON.stringify(receipt));
     };
 
-    refund = async () => {
+    refundByManager = async () => {
         this.setState({loading: true});
         try {
-            let response = await this.state.fundingContract.methods.refundByManager().send({
-                from: this.state.account,
+            await this.state.funding.fundingContract.methods.refundByManager().send({
+                from: this.state.funding.account,
             });
         } catch (e) {
             this.setState({errorMsg: e.toString(), loading: false});
@@ -105,10 +110,11 @@ class FundingDetail extends Component {
         }
         this.setState({
             loading: false,
-            showModal: true,
+            // showModal: true,
             msg: "退款成功"
         });
-        this.refs.receiptModal.showModal();
+        // this.refs.receiptModal.showModal();
+        alert("退款成功");
     };
 
     showSupport = (isComplete, isSupporter) => {
@@ -122,21 +128,30 @@ class FundingDetail extends Component {
         }
     };
 
+    refundByAnyone = async () => {
+        let receipt = await this.state.funding.fundingContract.methods.refundByAnyone().send({
+            from: this.state.funding.account
+        });
+        alert(JSON.stringify(receipt));
+    };
+
+
     render() {
         let {fundingAddr} = this.state;
-        let {isComplete, isSupporter} = this.state.funding;
+        let {isComplete, isSupporter, isFundingSuccess} = this.state.funding;
         let {manager, isManager, projectName, playersCount, totalBalance, supportMoney, goalMoney} = this.state.funding;
 
-        let rm = <ReceiptModal title={"本次交易信息"} receipt={this.state.receipt} ref="receiptModal"/>;
+        // let rm = <ReceiptModal title={"本次交易信息"} receipt={this.state.receipt} ref="receiptModal"/>;
         let error = <Alert message="交易错误" description={this.state.errorMsg} type="error" closable/>;
         let managerContent =
             <div style={{border: "1px solid", textAlign: "center", paddingTop: "10px"}}>
                 <Tag color="#2db7f5">您是众筹发起者</Tag>
                 <p>
-                    <Button style={{marginTop: "4px"}} onClick={this.refund} loading={this.state.loading}>主动退款</Button>
+                    <Button style={{marginTop: "4px"}} onClick={this.refundByManager}
+                            loading={this.state.loading}>主动退款</Button>
                 </p>
                 <p>
-                    {isComplete ? <Button>发起用款请求</Button> : <span></span>}
+                    {isComplete ? <Button onClick={this.createRequest}>发起用款请求</Button> : <span></span>}
                 </p>
             </div>
         ;
@@ -147,9 +162,9 @@ class FundingDetail extends Component {
                 <div>
                     <div style={{float: "left", width: "30%"}}>
                         {/*显示信息确认框*/}
-                        {this.state.showModal && rm}
+                        {/*{this.state.showModal && rm}*/}
                         {this.state.errorMsg && error}
-                        <Card title={projectName} style={{width: 320, marginTop: 20}}>
+                        <Card title={projectName} style={{width: 330, marginTop: 20}}>
                             <p>
                                 该合约地址:
                             </p>
@@ -165,32 +180,24 @@ class FundingDetail extends Component {
                             <p>剩余时间:{this.state.remainTime}</p>
                             <p>支持项目需要花费:{supportMoney}Wei</p>
                             <p>众筹所需金额:{goalMoney}Wei</p>
-                            <p><Button>发起退款请求(众筹未完成时可发起)</Button></p>
+                            {/*众筹结束了,并且没有成功才能随便来人发起退款*/}
+                            {isComplete && !isFundingSuccess &&
+                            <p><Button onClick={this.refundByAnyone}>发起退款请求</Button></p>}
                             {showSupport}
                             {isManager && managerContent}
+                        </Card>
+
+                        <Card title={"发起请求"} style={{width: 330, marginTop: 20}}>
+                            <WrappedRequestForm/>
                         </Card>
                     </div>
                     <div style={{float: "left", width: "65%", marginLeft: "3%", textAlign: "center"}}>
                         <h1>筹款人用款请求列表</h1>
                         <Row gutter={16}>
-                            <Col span={7}>
-                                <Card title={"第一条需求"}>
-                                    <p>投票数:5</p>
-                                    <p>所需金额:4000 Wei</p>
-                                    <p>是否付款:false</p>
-                                    <p>isVotedAt(address):一个地址</p>
-                                    <p>
-                                        收款人地址:
-                                    </p>
-                                    <TextArea disabled={true}>0xB5EC8Ff846112F944E2b06cC11602fe918557e36</TextArea>
-                                    <Button>点击支持(根据isSupporter来判断是否显示)</Button>
-                                </Card>
-                            </Col>
-
+                            <RequestCard/>
                         </Row>
                     </div>
                 </div>
-
             </Spin>
         );
     }

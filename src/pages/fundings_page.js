@@ -43,10 +43,8 @@ class FundingsPage extends Component {
         if (fundingsSize <= range) {
             range = fundingsSize - 1;
         }
-        console.log("range:"+range+",startPosition:"+startPosition);
 
         let fundings = [];
-        // for (range; startPosition >=range; startPosition--) {
         for (startPosition; startPosition <= range; startPosition++) {
             let fundingAddr = fundingsAddr[startPosition];
 
